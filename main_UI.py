@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*- 
 
-import dlib                     # 人脸识别的库dlib
-import numpy as np              # 数据处理的库numpy
-import cv2                      # 图像处理的库OpenCv
-import wx                       # 构造显示界面的GUI
+import dlib
+import numpy as np
+import cv2
+import wx
 import wx.xrc
 import wx.adv
 from scipy.spatial import distance as dist
@@ -98,7 +98,6 @@ class Fatigue_detecting(wx.Frame):
         bSizer4.Add( sbSizer1, 1, wx.EXPAND, 5 )
         bSizer2.Add( bSizer4, 3, wx.EXPAND, 5 )
         bSizer1.Add( bSizer2, 1, wx.EXPAND, 5 )
-
         self.SetSizer( bSizer1 )  
         self.Layout()
         self.Centre( wx.BOTH )
@@ -162,11 +161,8 @@ class Fatigue_detecting(wx.Frame):
         self.line_pairs = [[0, 1], [1, 2], [2, 3], [3, 0],
                           [4, 5], [5, 6], [6, 7], [7, 4],
                           [0, 4], [1, 5], [2, 6], [3, 7]]
-        
-
     def __del__( self ):
         pass
-
     def get_head_pose(self,shape):
         image_pts = np.float32([shape[17], shape[21], shape[22], shape[26], shape[36],
                                 shape[39], shape[42], shape[45], shape[31], shape[35],
@@ -181,7 +177,6 @@ class Fatigue_detecting(wx.Frame):
         pitch = math.degrees(math.asin(math.sin(pitch)))
         roll = -math.degrees(math.asin(math.sin(roll)))
         yaw = math.degrees(math.asin(math.sin(yaw)))
-        #print('pitch:{}, yaw:{}, roll:{}'.format(pitch, yaw, roll))
         return reprojectdst, euler_angle
     def eye_aspect_ratio(self,eye):
         A = dist.euclidean(eye[1], eye[5])
@@ -195,8 +190,6 @@ class Fatigue_detecting(wx.Frame):
         C = np.linalg.norm(mouth[0] - mouth[6])  # 49, 55
         mar = (A + B) / (2.0 * C)
         return mar
-
-
     def _learning_face(self,event):
         self.detector = dlib.get_frontal_face_detector()
         self.predictor = dlib.shape_predictor("./model/shape_predictor_68_face_landmarks.dat")
@@ -225,180 +218,118 @@ class Fatigue_detecting(wx.Frame):
                     if self.yawn_checkBox1.GetValue()== True:
                         mouth = shape[mStart:mEnd]        
                         mar = self.mouth_aspect_ratio(mouth)
-                        # 使用cv2.convexHull获得凸包位置，使用drawContours画出轮廓位置进行画图操作
                         mouthHull = cv2.convexHull(mouth)
                         cv2.drawContours(im_rd, [mouthHull], -1, (0, 255, 0), 1)
-                        # 同理，判断是否打哈欠    
-                        if mar > self.MAR_THRESH:# 张嘴阈值0.5
+                        if mar > self.MAR_THRESH:
                             self.mCOUNTER += 1
                         else:
-                            # 如果连续3次都小于阈值，则表示打了一次哈欠
                             if self.mCOUNTER >= self.MOUTH_AR_CONSEC_FRAMES:# 阈值：3
                                 self.mTOTAL += 1
-                                #显示
                                 cv2.putText(im_rd, "Yawning!", (10, 60),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
                                 self.m_textCtrl3.AppendText(time.strftime('%Y-%m-%d %H:%M ', time.localtime())+u"打哈欠\n")
-                            # 重置嘴帧计数器
                             self.mCOUNTER = 0
                         cv2.putText(im_rd, "COUNTER: {}".format(self.mCOUNTER), (150, 60),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2) 
                         cv2.putText(im_rd, "MAR: {:.2f}".format(mar), (300, 60),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
                         cv2.putText(im_rd, "Yawning: {}".format(self.mTOTAL), (450, 60),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255,255,0), 2)
                     else:
                         pass
-                    """
-                    眨眼
-                    """
                     if self.blink_checkBox2.GetValue()== True:
-                        # 提取左眼和右眼坐标
                         leftEye = shape[lStart:lEnd]
                         rightEye = shape[rStart:rEnd]
-                        # 构造函数计算左右眼的EAR值，使用平均值作为最终的EAR
                         leftEAR = self.eye_aspect_ratio(leftEye)
                         rightEAR = self.eye_aspect_ratio(rightEye)
                         ear = (leftEAR + rightEAR) / 2.0
                         leftEyeHull = cv2.convexHull(leftEye)
                         rightEyeHull = cv2.convexHull(rightEye)
-                        # 使用cv2.convexHull获得凸包位置，使用drawContours画出轮廓位置进行画图操作
                         cv2.drawContours(im_rd, [leftEyeHull], -1, (0, 255, 0), 1)
                         cv2.drawContours(im_rd, [rightEyeHull], -1, (0, 255, 0), 1)
-                        # 循环，满足条件的，眨眼次数+1
-                        if ear < self.EYE_AR_THRESH:# 眼睛长宽比：0.2
+                        if ear < self.EYE_AR_THRESH:
                             self.COUNTER += 1
-
                         else:
-                            # 如果连续3次都小于阈值，则表示进行了一次眨眼活动
-                            if self.COUNTER >= self.EYE_AR_CONSEC_FRAMES:# 阈值：3
+                            if self.COUNTER >= self.EYE_AR_CONSEC_FRAMES:
                                 self.TOTAL += 1
                                 self.m_textCtrl3.AppendText(time.strftime('%Y-%m-%d %H:%M ', time.localtime())+u"眨眼\n")
-                            # 重置眼帧计数器
                             self.COUNTER = 0
-                        # 第十四步：进行画图操作，同时使用cv2.putText将眨眼次数进行显示
                         cv2.putText(im_rd, "Faces: {}".format(len(faces)), (10, 30),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)     
                         cv2.putText(im_rd, "COUNTER: {}".format(self.COUNTER), (150, 30),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2) 
                         cv2.putText(im_rd, "EAR: {:.2f}".format(ear), (300, 30),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
                         cv2.putText(im_rd, "Blinks: {}".format(self.TOTAL), (450, 30),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255,255,0), 2)
                     else:
                         pass
-                    """
-                    瞌睡点头
-                    """
                     if self.nod_checkBox7.GetValue()== True:
-                        # 获取头部姿态
                         reprojectdst, euler_angle = self.get_head_pose(shape) 
-                        har = euler_angle[0, 0]# 取pitch旋转角度
-                        if har > self.HAR_THRESH:# 点头阈值0.3
+                        har = euler_angle[0, 0]
+                        if har > self.HAR_THRESH:
                             self.hCOUNTER += 1
                         else:
-                            # 如果连续3次都小于阈值，则表示瞌睡点头一次
-                            if self.hCOUNTER >= self.NOD_AR_CONSEC_FRAMES:# 阈值：3
+                            if self.hCOUNTER >= self.NOD_AR_CONSEC_FRAMES:
                                 self.hTOTAL += 1
                                 self.m_textCtrl3.AppendText(time.strftime('%Y-%m-%d %H:%M ', time.localtime())+u"瞌睡点头\n")
-                            # 重置点头帧计数器
                             self.hCOUNTER = 0
-                        # 绘制正方体12轴(视频流尺寸过大时，reprojectdst会超出int范围，建议压缩检测视频尺寸)
                         for start, end in self.line_pairs:
                             cv2.line(im_rd, reprojectdst[start], reprojectdst[end], (0, 0, 255))
-                        # 显示角度结果
                         cv2.putText(im_rd, "X: " + "{:7.2f}".format(euler_angle[0, 0]), (10, 90), cv2.FONT_HERSHEY_SIMPLEX,0.75, (0, 255, 0), thickness=2)# GREEN
                         cv2.putText(im_rd, "Y: " + "{:7.2f}".format(euler_angle[1, 0]), (150, 90), cv2.FONT_HERSHEY_SIMPLEX,0.75, (255, 0, 0), thickness=2)# BLUE
                         cv2.putText(im_rd, "Z: " + "{:7.2f}".format(euler_angle[2, 0]), (300, 90), cv2.FONT_HERSHEY_SIMPLEX,0.75, (0, 0, 255), thickness=2)# RED    
                         cv2.putText(im_rd, "Nod: {}".format(self.hTOTAL), (450, 90),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255,255,0), 2)
                     else:
                         pass
-                    
-                #print('嘴巴实时长宽比:{:.2f} '.format(mar)+"\t是否张嘴："+str([False,True][mar > self.MAR_THRESH]))
-                #print('眼睛实时长宽比:{:.2f} '.format(ear)+"\t是否眨眼："+str([False,True][self.COUNTER>=1]))
             else:
-                # 没有检测到人脸
                 self.oCOUNTER+=1
                 cv2.putText(im_rd, "No Face", (20, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255),3, cv2.LINE_AA)
                 if self.oCOUNTER >= self.OUT_AR_CONSEC_FRAMES_check:
                     self.m_textCtrl3.AppendText(time.strftime('%Y-%m-%d %H:%M ', time.localtime())+u"员工脱岗!!!\n")
                     self.oCOUNTER = 0
-                
-            # 确定疲劳提示:眨眼50次，打哈欠15次，瞌睡点头30次
             if self.TOTAL >= 50 or self.mTOTAL>=15 or self.hTOTAL>=30:
                 cv2.putText(im_rd, "SLEEP!!!", (100, 200),cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 3)
-                #self.m_textCtrl3.AppendText(u"疲劳")
-                
-            # opencv中imread的图片内部是BGR排序，wxPython的StaticBitmap需要的图片是RGB排序，不转换会出现颜色变换
             height,width = im_rd.shape[:2]
             image1 = cv2.cvtColor(im_rd, cv2.COLOR_BGR2RGB)
             pic = wx.Bitmap.FromBuffer(width,height,image1)
-            # 显示图片在panel上：
             self.bmp.SetBitmap(pic)
-
-        # 释放摄像头
         self.cap.release()
-
     def camera_on(self,event):
-        """使用多线程，子线程运行后台的程序，主线程更新前台的UI，这样不会互相影响"""
         import _thread
-        # 创建子线程，按钮调用这个方法，
         _thread.start_new_thread(self._learning_face, (event,))
-    
     def cameraid_choice( self, event ):
-        # 摄像头编号
-        cameraid = int(event.GetString()[-1])# 截取最后一个字符
+        cameraid = int(event.GetString()[-1])
         if cameraid == 0:
             self.m_textCtrl3.AppendText(u"准备打开本地摄像头!!!\n")
         if cameraid == 1 or cameraid == 2:
             self.m_textCtrl3.AppendText(u"准备打开外置摄像头!!!\n")
         self.VIDEO_STREAM = cameraid
-        
     def vedio_on( self, event ):  
-        if self.CAMERA_STYLE == True :# 释放摄像头资源
-            # 弹出关闭摄像头提示窗口
+        if self.CAMERA_STYLE == True :
             dlg = wx.MessageDialog(None, u'确定要关闭摄像头？', u'操作提示', wx.YES_NO | wx.ICON_QUESTION)
             if(dlg.ShowModal() == wx.ID_YES):
-                self.cap.release()#释放摄像头
-                self.bmp.SetBitmap(wx.Bitmap(self.image_cover))#封面
-                dlg.Destroy()#取消弹窗
-        # 选择文件夹对话框窗口
+                self.cap.release()
+                self.bmp.SetBitmap(wx.Bitmap(self.image_cover))
+                dlg.Destroy()
         dialog = wx.FileDialog(self,u"选择视频检测",os.getcwd(),'',wildcard="(*.mp4)|*.mp4",style=wx.FD_OPEN | wx.FD_CHANGE_DIR)
         if dialog.ShowModal() == wx.ID_OK:
-            #如果确定了选择的文件夹，将文件夹路径写到m_textCtrl3控件
             self.m_textCtrl3.SetValue(u"文件路径:"+dialog.GetPath()+"\n")
-            self.VIDEO_STREAM = str(dialog.GetPath())# 更新全局变量路径
+            self.VIDEO_STREAM = str(dialog.GetPath())
             dialog.Destroy
-            """使用多线程，子线程运行后台的程序，主线程更新前台的UI，这样不会互相影响"""
             import _thread
-            # 创建子线程，按钮调用这个方法，
             _thread.start_new_thread(self._learning_face, (event,))
-    
     def AR_CONSEC_FRAMES( self, event ):
         self.m_textCtrl3.AppendText(u"设置疲劳间隔为:\t"+event.GetString()+"秒\n")
-        self.AR_CONSEC_FRAMES_check = int(event.GetString())
-        
+        self.AR_CONSEC_FRAMES_check = int(event.GetString())  
     def OUT_AR_CONSEC_FRAMES( self, event ):
         self.m_textCtrl3.AppendText(u"设置脱岗间隔为:\t"+event.GetString()+"秒\n")
         self.OUT_AR_CONSEC_FRAMES_check = int(event.GetString())
-
     def off(self,event):
-        """关闭摄像头，显示封面页"""
         self.cap.release()
         self.bmp.SetBitmap(wx.Bitmap(self.image_cover))
-        
     def OnClose(self, evt):
-        """关闭窗口事件函数"""
         dlg = wx.MessageDialog(None, u'确定要关闭本窗口？', u'操作提示', wx.YES_NO | wx.ICON_QUESTION)
         if(dlg.ShowModal() == wx.ID_YES):
             self.Destroy()
         print("检测结束，成功退出程序!!!")
-
-            
 class main_app(wx.App):
-    """
-     在OnInit() 里边申请Frame类，这样能保证一定是在app后调用，
-     这个函数是app执行完自己的__init__函数后就会执行
-    """
-    # OnInit 方法在主事件循环开始前被wxPython系统调用，是wxpython独有的
     def OnInit(self):
         self.frame = Fatigue_detecting(parent=None,title="Fatigue Demo")
         self.frame.Show(True)
         return True   
-
-    
 if __name__ == "__main__":
     app = main_app()
     app.MainLoop()
